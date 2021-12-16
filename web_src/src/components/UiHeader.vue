@@ -15,7 +15,7 @@
 <!--              <el-menu-item index="/setting/sip">国标服务</el-menu-item>-->
 <!--              <el-menu-item index="/setting/media">媒体服务</el-menu-item>-->
 <!--            </el-submenu>-->
-            <el-switch v-model="alarmNotify"  active-text="报警信息推送" style="display: block float: right" @change="alarmNotifyChannge"></el-switch>
+            <el-switch v-model="alarmNotify"  active-text="报警信息推送" style="display: block ;float: right" @change="alarmNotifyChannge"></el-switch>
 <!--            <el-menu-item style="float: right;" @click="loginout">退出</el-menu-item>-->
             <el-submenu index="" style="float: right;" >
               <template slot="title">欢迎，{{this.$cookies.get("session").username}}</template>

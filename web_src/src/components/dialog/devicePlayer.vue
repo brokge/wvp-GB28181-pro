@@ -181,8 +181,8 @@
 <script>
 // import player from '../dialog/rtcPlayer.vue'
 // import LivePlayer from '@liveqing/liveplayer'
-// import player from '../dialog/easyPlayer.vue'
-import player from '../dialog/jessibuca.vue'
+import player from '../dialog/easyPlayer.vue'
+// import player from '../dialog/jessibuca.vue'
 export default {
     name: 'devicePlayer',
     props: {},
