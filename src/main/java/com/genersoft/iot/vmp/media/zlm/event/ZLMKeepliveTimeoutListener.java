@@ -1,8 +1,12 @@
 package com.genersoft.iot.vmp.media.zlm.event;
 
+import com.alibaba.fastjson.JSONObject;
 import com.genersoft.iot.vmp.common.VideoManagerConstants;
 import com.genersoft.iot.vmp.conf.UserSetup;
 import com.genersoft.iot.vmp.gb28181.event.EventPublisher;
+import com.genersoft.iot.vmp.media.zlm.ZLMRESTfulUtils;
+import com.genersoft.iot.vmp.media.zlm.dto.MediaServerItem;
+import com.genersoft.iot.vmp.service.IMediaServerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,12 +29,25 @@ public class ZLMKeepliveTimeoutListener extends KeyExpirationEventMessageListene
 	private EventPublisher publisher;
 
 	@Autowired
+	private ZLMRESTfulUtils zlmresTfulUtils;
+
+	@Autowired
 	private UserSetup userSetup;
+
+	@Autowired
+	private IMediaServerService mediaServerService;
+
+    @Override
+    public void init() {
+        if (!userSetup.getRedisConfig()) {
+            // 配置springboot默认Config为空，即不让应用去修改redis的默认配置，因为Redis服务出于安全会禁用CONFIG命令给远程用户使用
+            setKeyspaceNotificationsConfigParameter("");
+        }
+        super.init();
+    }
 
 	public ZLMKeepliveTimeoutListener(RedisMessageListenerContainer listenerContainer) {
 		super(listenerContainer);
-        // 配置springboot默认Config为空，即不让应用去修改redis的默认配置，因为Redis服务出于安全会禁用CONFIG命令给远程用户使用
-//        setKeyspaceNotificationsConfigParameter("");
 	}
 
 	/**
@@ -48,7 +65,17 @@ public class ZLMKeepliveTimeoutListener extends KeyExpirationEventMessageListene
         }
         
         String mediaServerId = expiredKey.substring(KEEPLIVEKEY_PREFIX.length(),expiredKey.length());
+        logger.info("[zlm心跳到期]：" + mediaServerId);
+        // 发起http请求验证zlm是否确实无法连接，如果确实无法连接则发送离线事件，否则不作处理
+        MediaServerItem mediaServerItem = mediaServerService.getOne(mediaServerId);
+        JSONObject mediaServerConfig = zlmresTfulUtils.getMediaServerConfig(mediaServerItem);
+        if (mediaServerConfig == null) {
+            publisher.zlmOfflineEventPublish(mediaServerId);
+        }else {
+            logger.info("[zlm心跳到期]：{}验证后zlm仍在线，回复心跳信息", mediaServerId);
+            // 添加zlm信息
+            mediaServerService.updateMediaServerKeepalive(mediaServerId, mediaServerConfig);
+        }
 
-        publisher.zlmOfflineEventPublish(mediaServerId);
     }
 }
