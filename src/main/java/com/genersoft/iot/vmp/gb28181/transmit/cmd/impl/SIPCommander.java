@@ -1242,7 +1242,7 @@ public class SIPCommander implements ISIPCommander {
 	 */
 	@Override
 	public boolean alarmInfoQuery(Device device, String startPriority, String endPriority, String alarmMethod, String alarmType,
-								 String startTime, String endTime, SipSubscribe.Event errorEvent) {
+								 String startTime, String endTime,SipSubscribe.Event okEvent , SipSubscribe.Event errorEvent) {
 		try {
 			StringBuffer cmdXml = new StringBuffer(200);
 			cmdXml.append("<?xml version=\"1.0\" ?>\r\n");
@@ -1276,7 +1276,7 @@ public class SIPCommander implements ISIPCommander {
 					: udpSipProvider.getNewCallId();
 
 			Request request = headerProvider.createMessageRequest(device, cmdXml.toString(), null, "FromAlarm" + tm, null, callIdHeader);
-			transmitRequest(device, request, errorEvent);
+			transmitRequest(device, request, errorEvent,okEvent);
 			return true;
 		} catch (SipException | ParseException | InvalidArgumentException e) {
 			e.printStackTrace();
@@ -1438,6 +1438,7 @@ public class SIPCommander implements ISIPCommander {
 	 * @param endTime		报警发生终止时间（可选）
 	 * @return				true = 命令发送成功
 	 */
+	@Override
 	public boolean alarmSubscribe(Device device, int expires, String startPriority, String endPriority, String alarmMethod, String alarmType, String startTime, String endTime) {
 		try {
 			StringBuffer cmdXml = new StringBuffer(200);

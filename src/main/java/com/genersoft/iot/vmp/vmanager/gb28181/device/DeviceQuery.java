@@ -7,6 +7,7 @@ import com.genersoft.iot.vmp.gb28181.event.DeviceOffLineDetector;
 import com.genersoft.iot.vmp.gb28181.transmit.callback.DeferredResultHolder;
 import com.genersoft.iot.vmp.gb28181.transmit.callback.RequestMessage;
 import com.genersoft.iot.vmp.gb28181.transmit.cmd.impl.SIPCommander;
+import com.genersoft.iot.vmp.gb28181.utils.XmlUtil;
 import com.genersoft.iot.vmp.service.IDeviceService;
 import com.genersoft.iot.vmp.storager.IRedisCatchStorage;
 import com.genersoft.iot.vmp.storager.IVideoManagerStorager;
@@ -33,21 +34,21 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/device/query")
 public class DeviceQuery {
-	
+
 	private final static Logger logger = LoggerFactory.getLogger(DeviceQuery.class);
-	
+
 	@Autowired
 	private IVideoManagerStorager storager;
 
 	@Autowired
 	private IRedisCatchStorage redisCatchStorage;
-	
+
 	@Autowired
 	private SIPCommander cmder;
-	
+
 	@Autowired
 	private DeferredResultHolder resultHolder;
-	
+
 	@Autowired
 	private DeviceOffLineDetector offLineDetector;
 
@@ -65,11 +66,11 @@ public class DeviceQuery {
 	})
 	@GetMapping("/devices/{deviceId}")
 	public ResponseEntity<Device> devices(@PathVariable String deviceId){
-		
+
 //		if (logger.isDebugEnabled()) {
 //			logger.debug("查询视频设备API调用，deviceId：" + deviceId);
 //		}
-		
+
 		Device device = storager.queryVideoDevice(deviceId);
 		return new ResponseEntity<>(device,HttpStatus.OK);
 	}
@@ -87,11 +88,11 @@ public class DeviceQuery {
 	})
 	@GetMapping("/devices")
 	public PageInfo<Device> devices(int page, int count){
-		
+
 //		if (logger.isDebugEnabled()) {
 //			logger.debug("查询所有视频设备API调用");
 //		}
-		
+
 		return storager.queryVideoDeviceList(page, count);
 	}
 
@@ -143,7 +144,7 @@ public class DeviceQuery {
 	})
 	@PostMapping("/devices/{deviceId}/sync")
 	public DeferredResult<ResponseEntity<Device>> devicesSync(@PathVariable String deviceId){
-		
+
 		if (logger.isDebugEnabled()) {
 			logger.debug("设备通道信息同步API调用，deviceId：" + deviceId);
 		}
@@ -187,11 +188,11 @@ public class DeviceQuery {
 	})
 	@DeleteMapping("/devices/{deviceId}/delete")
 	public ResponseEntity<String> delete(@PathVariable String deviceId){
-		
+
 		if (logger.isDebugEnabled()) {
 			logger.debug("设备信息删除API调用，deviceId：" + deviceId);
 		}
-		
+
 		if (offLineDetector.isOnline(deviceId)) {
 			return new ResponseEntity<String>("不允许删除在线设备！", HttpStatus.NOT_ACCEPTABLE);
 		}
@@ -328,7 +329,7 @@ public class DeviceQuery {
 
 	/**
 	 * 设备状态查询请求API接口
-	 * 
+	 *
 	 * @param deviceId 设备id
 	 */
 	@ApiOperation("设备状态查询")
@@ -387,8 +388,8 @@ public class DeviceQuery {
 	})
 	@GetMapping("/alarm/{deviceId}")
 	public DeferredResult<ResponseEntity<String>> alarmApi(@PathVariable String deviceId,
-														@RequestParam(required = false) String startPriority, 
-														@RequestParam(required = false) String endPriority, 
+														@RequestParam(required = false) String startPriority,
+														@RequestParam(required = false) String endPriority,
 														@RequestParam(required = false) String alarmMethod,
 														@RequestParam(required = false) String alarmType,
 														@RequestParam(required = false) String startTime,
@@ -399,14 +400,23 @@ public class DeviceQuery {
 		Device device = storager.queryVideoDevice(deviceId);
 		String key = DeferredResultHolder.CALLBACK_CMD_ALARM + deviceId;
 		String uuid = UUID.randomUUID().toString();
-		cmder.alarmInfoQuery(device, startPriority, endPriority, alarmMethod, alarmType, startTime, endTime, event -> {
+		cmder.alarmInfoQuery(device, startPriority, endPriority, alarmMethod, alarmType, startTime, endTime, event->{
+			logger.debug(event.toString());
+            RequestMessage result = new RequestMessage();
+            result.setId(uuid);
+            result.setKey(key);
+			JSONObject json = new JSONObject();
+			//XmlUtil.node2Json(rootElement, json);
+            result.setData(event.event.toString());
+            resultHolder.invokeResult(result);
+		}, event -> {
 			RequestMessage msg = new RequestMessage();
 			msg.setId(uuid);
 			msg.setKey(key);
 			msg.setData(String.format("设备报警查询失败，错误码： %s, %s",event.statusCode, event.msg));
 			resultHolder.invokeResult(msg);
 		});
-        DeferredResult<ResponseEntity<String>> result = new DeferredResult<ResponseEntity<String >> (3 * 1000L);
+        DeferredResult<ResponseEntity<String>> result = new DeferredResult<ResponseEntity<String >> (10 * 1000L);
 		result.onTimeout(()->{
 			logger.warn(String.format("设备报警查询超时"));
 			// 释放rtpserver
